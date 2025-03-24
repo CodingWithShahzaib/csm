@@ -75,43 +75,37 @@ def main():
         generator.sample_rate
     )
 
-    prompt_b = prepare_prompt(
-        SPEAKER_PROMPTS["conversational_b"]["text"],
-        1,
-        SPEAKER_PROMPTS["conversational_b"]["audio"],
-        generator.sample_rate
-    )
-
-    # Generate conversation
+    # Generate conversation - just one short utterance for testing
     conversation = [
-        {"text": "Hey how are you doing?", "speaker_id": 0},
-        {"text": "Pretty good, pretty good. How about you?", "speaker_id": 1},
-        {"text": "I'm great! So happy to be speaking with you today.", "speaker_id": 0},
-        {"text": "Me too! This is some cool stuff, isn't it?", "speaker_id": 1}
+        {"text": "Hello world!", "speaker_id": 0}
     ]
 
     # Generate each utterance
     generated_segments = []
-    prompt_segments = [prompt_a, prompt_b]
+    prompt_segments = [prompt_a]
 
     for utterance in conversation:
         print(f"Generating: {utterance['text']}")
+        print("This may take a while on CPU...")
         audio_tensor = generator.generate(
             text=utterance['text'],
             speaker=utterance['speaker_id'],
             context=prompt_segments + generated_segments,
-            max_audio_length_ms=10_000,
+            max_audio_length_ms=3_000,  # Shorter for testing
+            temperature=0.9,
+            topk=50,
         )
         generated_segments.append(Segment(text=utterance['text'], speaker=utterance['speaker_id'], audio=audio_tensor))
 
-    # Concatenate all generations
-    all_audio = torch.cat([seg.audio for seg in generated_segments], dim=0)
-    torchaudio.save(
-        "full_conversation.wav",
-        all_audio.unsqueeze(0).cpu(),
-        generator.sample_rate
-    )
-    print("Successfully generated full_conversation.wav")
+    # Save each utterance individually
+    for i, segment in enumerate(generated_segments):
+        filename = f"utterance_{i}.wav"
+        torchaudio.save(
+            filename,
+            segment.audio.unsqueeze(0).cpu(),
+            generator.sample_rate
+        )
+        print(f"Successfully generated {filename}")
 
 if __name__ == "__main__":
     main() 
